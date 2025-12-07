@@ -22,11 +22,19 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
 
+      console.log('🔍 Checking for token in URL:', {
+        fullUrl: window.location.href,
+        search: window.location.search,
+        token: token ? 'Token found' : 'No token',
+      });
+
       if (token) {
+        console.log('✅ Token received, storing...');
         // Store the token
         setToken(token);
-        // Clean up URL
+        // Clean up URL (remove token from URL for security)
         window.history.replaceState({}, document.title, '/dashboard');
+        console.log('✅ Token stored, URL cleaned');
       }
 
       // Check if user is authenticated

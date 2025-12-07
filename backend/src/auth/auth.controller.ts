@@ -37,9 +37,19 @@ export class AuthController {
     // Generate JWT token
     const token = await this.authService.generateToken(user);
 
-    // Redirect to frontend dashboard with token
+    if (!token) {
+      console.error('❌ Failed to generate token');
+      return res.redirect(
+        `${process.env.FRONTEND_URL || 'http://localhost:5173'}/?error=token_generation_failed`,
+      );
+    }
+
+    // Redirect to frontend dashboard with token (URL encode the token)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    return res.redirect(`${frontendUrl}/dashboard?token=${token}`);
+    const redirectUrl = `${frontendUrl}/dashboard?token=${encodeURIComponent(token)}`;
+
+    console.log('✅ Redirecting to dashboard with token');
+    return res.redirect(redirectUrl);
   }
 
   /**
