@@ -1,53 +1,92 @@
-# CodeGuardian AI
+# 🛡️ CodeGuardian AI
 
-Code analysis tool with GitHub OAuth integration.
+> **AI-Powered Code Analysis Platform for GitHub Repositories**
+
+CodeGuardian AI is a modern, full-stack web application that provides comprehensive code analysis for GitHub repositories. Analyze code quality, detect security vulnerabilities, identify best practices, and get actionable recommendations—all powered by intelligent analysis algorithms.
+
+## ✨ Key Features
+
+- 🔐 **GitHub OAuth Integration** - Secure authentication with GitHub
+- 📊 **Repository Analysis** - Deep code analysis with detailed reports
+- 🔍 **Security Scanning** - Detect hardcoded secrets, SQL injection risks, and more
+- 📈 **Code Quality Metrics** - Complexity analysis, quality scores, and recommendations
+- 🎯 **Tech Stack Detection** - Automatically identify frameworks, libraries, and tools
+- 🚀 **Real-time Progress** - Live status updates during analysis
+- 💎 **Modern UI** - Beautiful glassmorphism design with smooth animations
 
 ## 🚀 Project Overview
 
-CodeGuardian AI is a modern web application that provides AI-powered code analysis for GitHub repositories. Built with a monorepo architecture using Turborepo, featuring a React frontend and NestJS backend.
+CodeGuardian AI is built with a **monorepo architecture** using **Turborepo**, featuring:
+- **React 19** frontend with TypeScript and Tailwind CSS v4
+- **NestJS** backend with TypeScript
+- **BullMQ** job queue system for async processing
+- **Redis** for job persistence and scalability
 
 ## 📁 Project Structure
 
 ```
 CodeGuardianAI/
-├── frontend/          # React + Vite + TypeScript + Tailwind CSS
+├── frontend/                    # React + Vite + TypeScript + Tailwind CSS
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/        # Page components (Login, Dashboard)
-│   │   ├── routes/        # React Router configuration
-│   │   ├── utils/         # Utility functions (auth, API)
-│   │   └── constants/     # Color constants and theme
+│   │   ├── components/          # Reusable UI components
+│   │   │   ├── LoginButton.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── pages/               # Page components
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Repositories.tsx
+│   │   │   └── Analysis.tsx
+│   │   ├── routes/              # React Router configuration
+│   │   ├── utils/               # Utility functions (auth, API)
+│   │   └── constants/           # Color constants and theme
 │   └── package.json
-├── backend/           # NestJS + TypeScript
+├── backend/                     # NestJS + TypeScript
 │   ├── src/
-│   │   ├── auth/         # Authentication module
-│   │   │   ├── strategies/    # Passport strategies (GitHub, JWT)
+│   │   ├── auth/                # Authentication module
+│   │   │   ├── strategies/      # Passport strategies (GitHub, JWT)
 │   │   │   ├── auth.controller.ts
 │   │   │   ├── auth.service.ts
 │   │   │   └── auth.module.ts
+│   │   ├── repos/               # Repository module
+│   │   │   ├── repos.controller.ts
+│   │   │   ├── repos.service.ts
+│   │   │   └── repos.module.ts
+│   │   ├── analysis/            # Code analysis module
+│   │   │   ├── analysis.controller.ts
+│   │   │   ├── analysis.service.ts
+│   │   │   ├── analysis.processor.ts
+│   │   │   └── analysis.module.ts
 │   │   └── main.ts
 │   └── package.json
-├── turbo.json         # Turborepo configuration
-└── package.json       # Root workspace config
+├── turbo.json                   # Turborepo configuration
+└── package.json                 # Root workspace config
 ```
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 19** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Tailwind CSS v4** - Styling
-- **React Router** - Client-side routing
+- **React 19** - Modern UI library with hooks
+- **TypeScript** - Type-safe development
+- **Vite** - Lightning-fast build tool and dev server
+- **Tailwind CSS v4** - Utility-first CSS framework
+- **React Router DOM** - Client-side routing and navigation
+- **Intersection Observer API** - Efficient infinite scrolling
 
 ### Backend
-- **NestJS** - Node.js framework
-- **TypeScript** - Type safety
-- **Passport.js** - Authentication
-  - `passport-github2` - GitHub OAuth strategy
-  - `passport-jwt` - JWT strategy
-- **@nestjs/jwt** - JWT token management
-- **@nestjs/config** - Environment configuration
+- **NestJS** - Progressive Node.js framework
+- **TypeScript** - Type-safe backend development
+- **Passport.js** - Authentication middleware
+  - `passport-github2` - GitHub OAuth 2.0 strategy
+  - `passport-jwt` - JWT token validation strategy
+- **@nestjs/jwt** - JWT token generation and validation
+- **BullMQ** - Job queue system for async processing
+- **Redis** - In-memory data store for job queue
+- **ioredis** - Redis client for Node.js
+
+### Infrastructure
+- **Turborepo** - High-performance monorepo build system
+- **GitHub API** - Repository and file access
+- **Docker** (optional) - Containerized Redis deployment
 
 ## 📋 Prerequisites
 
@@ -245,32 +284,63 @@ npm run lint
 
 ### ✅ Completed (Phase 3: MVP Analyzer)
 
-- [x] **Code Analysis**
+- [x] **Code Analysis Engine**
   - POST /analyze endpoint to start analysis
-  - BullMQ job queue for async processing
-  - Fetches repository files from GitHub
-  - Analyzes code quality, security, and best practices
+  - BullMQ job queue for async processing (with Redis fallback)
+  - Fetches repository files from GitHub API
+  - Analyzes up to 50 files per repository
+  - Comprehensive code quality, security, and best practice analysis
 
-- [x] **Analysis Features**
-  - Security issue detection (hardcoded secrets, SQL injection, eval usage)
-  - Code quality metrics (complexity, line count, language distribution)
-  - Best practice checks (long lines, TODO comments, console.log)
+- [x] **Tech Stack Detection**
+  - Automatic framework detection (React, Vue, Angular, NestJS, Express, Next.js, Django, Flask, etc.)
+  - Library identification (Axios, Lodash, Tailwind CSS, etc.)
+  - Build tool detection (Webpack, Vite, Turborepo)
+  - Database detection (MongoDB, PostgreSQL, MySQL, Redis, Prisma, TypeORM)
+  - Other tools (Docker, TypeScript)
+
+- [x] **Security Analysis**
+  - Hardcoded secrets detection (passwords, API keys, tokens)
+  - SQL injection vulnerability scanning
+  - eval() usage detection
+  - Weak cryptographic algorithms (MD5, SHA1)
+  - Insecure random number generation
+  - Detailed recommendations with code snippets
+
+- [x] **Code Quality Metrics**
+  - Complexity analysis (average and max)
+  - Total files and lines of code
+  - Language distribution
   - Quality score calculation (0-100)
 
-- [x] **Frontend Analysis UI**
-  - "Analyze Code" button on each repository
-  - Real-time status polling (every 2 seconds)
-  - Progress indicator during analysis
-  - Comprehensive results display with:
-    - Summary (files, lines, languages)
-    - Metrics (complexity, quality score)
-    - Security issues with severity levels
-    - Best practice recommendations
+- [x] **Best Practice Checks**
+  - Long line detection (>150 characters)
+  - TODO/FIXME comment tracking
+  - console.log in production code
+  - Empty catch blocks
+  - Deprecated React lifecycle methods
+  - var vs let/const usage
+  - Loose equality (==) detection
+  - Actionable recommendations for each issue
 
-- [x] **Job Management**
+- [x] **Frontend Analysis UI**
+  - "Analyze Code" button on each repository card
+  - Real-time status polling (every 2 seconds)
+  - Progress indicator with percentage
+  - Comprehensive results display:
+    - **Tech Stack** - Categorized by frameworks, libraries, build tools, databases
+    - **Summary** - Total files, lines, quality score
+    - **Languages** - Distribution with line counts
+    - **Metrics** - Complexity and quality scores
+    - **Security Issues** - Severity levels (high/medium/low) with recommendations
+    - **Best Practices** - Detailed suggestions with code snippets
+  - Full-screen display (no scrollbars, natural page scrolling)
+
+- [x] **Job Queue System**
   - GET /analyze/:jobId for status checking
-  - In-memory job store (can be upgraded to Redis)
-  - Job status tracking (pending, processing, completed, failed)
+  - Job status tracking (pending → processing → completed/failed)
+  - Progress updates (0-100%)
+  - Error handling and reporting
+  - In-memory job store (upgrades to Redis when available)
 
 ## 📡 API Endpoints
 
@@ -289,98 +359,449 @@ npm run lint
 ### Analysis
 
 - `POST /analyze` - Start code analysis for a repository (requires JWT token)
-  - Body: `{ owner: string, repo: string }`
-  - Returns: `{ jobId: string, message: string, statusUrl: string }`
-- `GET /analyze/:jobId` - Get analysis job status and results (requires JWT token)
-  - Returns: Analysis job with status, progress, and results
+  - **Body**: 
+    ```json
+    {
+      "owner": "facebook",
+      "repo": "react"
+    }
+    ```
+  - **Returns**: 
+    ```json
+    {
+      "jobId": "analysis-1234567890-abc123",
+      "message": "Analysis started",
+      "statusUrl": "/analyze/analysis-1234567890-abc123"
+    }
+    ```
+  - **Response Time**: Instant (returns immediately, processes in background)
 
-### Example Usage
+- `GET /analyze/:jobId` - Get analysis job status and results (requires JWT token)
+  - **Returns**: 
+    ```json
+    {
+      "id": "analysis-1234567890-abc123",
+      "repository": {
+        "owner": "facebook",
+        "repo": "react",
+        "fullName": "facebook/react"
+      },
+      "status": "completed",
+      "progress": 100,
+      "result": {
+        "summary": {
+          "totalFiles": 50,
+          "totalLines": 12500,
+          "languages": { "TypeScript": 10000, "JavaScript": 2500 },
+          "techStack": {
+            "frameworks": ["React"],
+            "libraries": ["Axios"],
+            "buildTools": ["Webpack"],
+            "databases": [],
+            "other": ["TypeScript"]
+          }
+        },
+        "metrics": {
+          "complexity": { "average": 5.2, "max": 15 },
+          "codeQuality": { "score": 85, "issues": 12 }
+        },
+        "findings": {
+          "security": [...],
+          "bestPractices": [...]
+        }
+      },
+      "createdAt": "2024-01-01T00:00:00Z",
+      "completedAt": "2024-01-01T00:02:00Z"
+    }
+    ```
+  - **Status Values**: `pending`, `processing`, `completed`, `failed`
+
+### Example API Usage
 
 ```typescript
-// Get current user
-const response = await fetch('http://localhost:3000/auth/me', {
+// 1. Get current user
+const userResponse = await fetch('http://localhost:3000/auth/me', {
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
   },
 });
-const data = await response.json();
+const userData = await userResponse.json();
+
+// 2. Get user repositories
+const reposResponse = await fetch('http://localhost:3000/repos?page=1&per_page=30', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+});
+const reposData = await reposResponse.json();
+
+// 3. Start analysis
+const analysisResponse = await fetch('http://localhost:3000/analyze', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    owner: 'facebook',
+    repo: 'react',
+  }),
+});
+const { jobId } = await analysisResponse.json();
+
+// 4. Poll for results
+const pollInterval = setInterval(async () => {
+  const statusResponse = await fetch(`http://localhost:3000/analyze/${jobId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const job = await statusResponse.json();
+  
+  if (job.status === 'completed') {
+    clearInterval(pollInterval);
+    console.log('Analysis complete!', job.result);
+  } else if (job.status === 'failed') {
+    clearInterval(pollInterval);
+    console.error('Analysis failed:', job.error);
+  } else {
+    console.log(`Progress: ${job.progress}%`);
+  }
+}, 2000); // Poll every 2 seconds
 ```
 
 ## 🗺️ Development Roadmap
 
 ### ✅ Phase 1: Auth Foundation (COMPLETED)
-- [x] GitHub OAuth endpoints
-- [x] JWT session management
-- [x] Frontend login flow
-- [x] User dashboard
-- [x] Routing system
-- [x] UI/UX design
+- [x] GitHub OAuth 2.0 integration
+- [x] JWT token generation and validation
+- [x] Protected routes and authentication guards
+- [x] User profile display
+- [x] Secure token storage
+- [x] Beautiful login UI with animations
 
 ### ✅ Phase 2: Repo Listing (COMPLETED)
-- [x] GET /repos endpoint (with pagination)
-- [x] Frontend repo selection UI
-- [x] Repository list display (grid layout)
-- [x] Repo search and filtering
-- [x] Infinite scrolling for large repository lists
+- [x] GitHub API integration for repositories
+- [x] Paginated repository fetching
+- [x] Infinite scrolling implementation
+- [x] Search and filter functionality
+- [x] Repository grid layout
+- [x] Language-based filtering
 
 ### ✅ Phase 3: MVP Analyzer (COMPLETED)
-- [x] POST /analyze endpoint
-- [x] Job queue (BullMQ)
-- [x] Basic code analysis
-- [x] Frontend polling + results display
-- [x] Analysis report UI
+- [x] Asynchronous job processing with BullMQ
+- [x] Tech stack detection (frameworks, libraries, tools)
+- [x] Security vulnerability scanning
+- [x] Code quality analysis
+- [x] Best practice recommendations
+- [x] Real-time progress tracking
+- [x] Comprehensive analysis reports
+- [x] Detailed recommendations with code snippets
 
-### 🚀 Phase 4: Enhancements
-- [ ] PR support
-- [ ] LLM enrichment
-- [ ] Apply patch functionality
-- [ ] Advanced analytics
-- [ ] Export reports
+### 🚀 Phase 4: Enhancements (NEXT)
+- [ ] **Pull Request Analysis** - Analyze specific PRs and diffs
+- [ ] **LLM Integration** - AI-powered code suggestions and explanations
+- [ ] **Auto-fix Capabilities** - Apply recommended fixes automatically
+- [ ] **Advanced Analytics** - Historical trends, team metrics
+- [ ] **Export Reports** - PDF, CSV, JSON export options
+- [ ] **Custom Rules** - User-defined analysis rules
+- [ ] **CI/CD Integration** - GitHub Actions, GitLab CI support
+- [ ] **Multi-repository Analysis** - Batch analysis across repos
 
 ## 🎨 Design System
 
-The application uses a consistent color theme defined in `frontend/src/constants/colors.ts`:
+The application uses a modern, consistent design system:
 
-- **Gradient Background**: Indigo → Purple → Pink
-- **Glass Morphism**: Translucent cards with backdrop blur
-- **Color Palette**: Purple, Pink, Indigo, Green (for success states)
-- **Animations**: Fade-in, slide-up, pulse effects
+### Color Palette
+- **Primary Gradient**: Indigo → Purple → Pink (animated background)
+- **Glass Morphism**: Translucent cards with backdrop blur effects
+- **Accent Colors**: 
+  - Purple/Indigo for primary actions
+  - Green for success states
+  - Red/Yellow for warnings and errors
+  - Blue for informational elements
 
-## 🔒 Security
+### UI Components
+- **Cards**: Glassmorphism effect with subtle borders
+- **Buttons**: Gradient backgrounds with hover animations
+- **Animations**: 
+  - Fade-in on page load
+  - Slide-up for cards
+  - Pulse effects for loading states
+  - Smooth transitions on interactions
 
-- JWT tokens stored in localStorage
-- Protected API routes with JWT validation
-- Secure OAuth flow with GitHub
-- Environment variables for sensitive data
-- CORS configured for frontend origin
+### Typography
+- **Headings**: Bold, white text with gradient accents
+- **Body**: Gray-200/300 for readability
+- **Code**: Monospace font for code snippets
+
+### Responsive Design
+- Mobile-first approach
+- Grid layouts that adapt to screen size
+- Touch-friendly button sizes
+- Optimized for desktop and mobile viewing
+
+**Theme Configuration**: `frontend/src/constants/colors.ts`
+
+## 🔒 Security Features
+
+- **JWT Authentication** - Secure token-based authentication
+  - Tokens stored in browser localStorage
+  - 7-day expiration period
+  - Automatic token validation on API requests
+  
+- **OAuth 2.0 Flow** - Secure GitHub authentication
+  - No password storage required
+  - GitHub handles user authentication
+  - Access tokens stored securely in JWT payload
+  
+- **Protected Routes** - Frontend and backend route protection
+  - React Router protected routes
+  - NestJS JWT guards on API endpoints
+  - Automatic redirect to login if unauthorized
+  
+- **Environment Variables** - Sensitive data protection
+  - All secrets in `.env` files (not committed)
+  - `.env` files in `.gitignore`
+  - Separate configs for development/production
+  
+- **CORS Configuration** - Cross-origin security
+  - Whitelist-based CORS policy
+  - Credentials enabled for authenticated requests
+  - Frontend origin validation
+
+- **Input Validation** - API request validation
+  - TypeScript type safety
+  - Request body validation
+  - Error handling and sanitization
 
 ## 📝 Environment Variables
 
-### Backend Required
-- `GITHUB_CLIENT_ID` - GitHub OAuth Client ID
-- `GITHUB_CLIENT_SECRET` - GitHub OAuth Client Secret
-- `JWT_SECRET` - Secret for JWT token signing
-- `FRONTEND_URL` - Frontend URL for CORS and redirects
+### Backend (`backend/.env`)
 
-### Frontend Required
-- `VITE_API_URL` - Backend API URL
+**Required:**
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+
+# GitHub OAuth (Required)
+GITHUB_CLIENT_ID=your_github_client_id_here
+GITHUB_CLIENT_SECRET=your_github_client_secret_here
+GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
+
+# JWT Configuration (Required)
+JWT_SECRET=your_jwt_secret_here_change_in_production
+```
+
+**Optional (for production with Redis):**
+```env
+# Redis Configuration (Optional - works without it)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+### Frontend (`frontend/.env`)
+
+**Required:**
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+### Generating Secrets
+
+**JWT Secret:**
+```bash
+# Generate a secure random secret
+openssl rand -base64 32
+```
+
+**GitHub OAuth:**
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Fill in the required fields (see setup instructions above)
+4. Copy Client ID and generate Client Secret
 
 ## 🐛 Troubleshooting
 
 ### OAuth Issues
-- Verify GitHub OAuth app callback URL matches exactly
-- Check that `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are set
-- Ensure `.env` file is in the `backend/` directory
+- **Problem**: "OAuth2Strategy requires a clientID option"
+  - **Solution**: Verify `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are set in `backend/.env`
+  - Check that values are not placeholders (e.g., not "your_github_client_id_here")
+  - Ensure `.env` file is in the `backend/` directory (not root)
+
+- **Problem**: "Redirect URI mismatch"
+  - **Solution**: Verify callback URL in GitHub OAuth app matches exactly: `http://localhost:3000/auth/github/callback`
+  - Check `GITHUB_CALLBACK_URL` in backend `.env`
 
 ### CORS Errors
-- Verify `FRONTEND_URL` in backend `.env` matches frontend URL
-- Check that backend CORS is enabled (it is by default)
+- **Problem**: "CORS policy blocked"
+  - **Solution**: Verify `FRONTEND_URL` in backend `.env` matches your frontend URL (default: `http://localhost:5173`)
+  - Check browser console for specific CORS error messages
 
 ### Token Issues
-- Clear localStorage if token is invalid
-- Check browser console for authentication errors
-- Verify JWT_SECRET is set in backend `.env`
+- **Problem**: "Unauthorized" or 401 errors
+  - **Solution**: 
+    - Clear browser localStorage: `localStorage.clear()`
+    - Re-authenticate via GitHub login
+    - Verify `JWT_SECRET` is set in backend `.env`
+    - Check token expiration (default: 7 days)
+
+### Analysis Issues
+- **Problem**: "Cannot POST /analyze" or 404 error
+  - **Solution**: 
+    - Ensure backend server is running
+    - Check that AnalysisModule is imported in AppModule
+    - Verify BullMQ dependencies are installed: `npm install @nestjs/bullmq bullmq ioredis`
+    - Restart backend server after installing dependencies
+
+- **Problem**: Redis connection errors (ECONNREFUSED)
+  - **Solution**: 
+    - Analysis works without Redis (synchronous fallback)
+    - To eliminate errors: Install and start Redis
+    - Verify Redis is running: `redis-cli ping` (should return PONG)
+    - These errors are warnings and don't prevent functionality
+
+### Build/Compilation Issues
+- **Problem**: TypeScript errors with BullMQ
+  - **Solution**: These are expected when BullMQ is optional. The code works with synchronous fallback.
+  - For production: Install Redis and BullMQ dependencies properly
+
+### Frontend Issues
+- **Problem**: UI not rendering properly
+  - **Solution**: 
+    - Verify Tailwind CSS is configured: `@tailwindcss/postcss` installed
+    - Check `postcss.config.js` uses `'@tailwindcss/postcss': {}`
+    - Clear browser cache and restart dev server
+
+## 🏗️ Architecture
+
+### How It Works
+
+1. **User Authentication**
+   - User clicks "Login with GitHub"
+   - Redirected to GitHub OAuth
+   - GitHub redirects back with authorization code
+   - Backend exchanges code for access token
+   - JWT token generated and stored
+
+2. **Repository Listing**
+   - Frontend fetches user repositories from GitHub API
+   - Paginated results (30 per page)
+   - Infinite scrolling loads more as user scrolls
+   - Search and filter in real-time
+
+3. **Code Analysis Flow**
+   ```
+   User clicks "Analyze Code"
+     ↓
+   POST /analyze → Creates job, returns jobId immediately
+     ↓
+   Job added to BullMQ queue (stored in Redis)
+     ↓
+   AnalysisProcessor picks up job
+     ↓
+   Fetches repository files from GitHub
+     ↓
+   Analyzes files (security, quality, best practices)
+     ↓
+   Detects tech stack from package.json, etc.
+     ↓
+   Updates progress: 10% → 30% → 90% → 100%
+     ↓
+   Frontend polls GET /analyze/:jobId every 2 seconds
+     ↓
+   Results displayed when status = "completed"
+   ```
+
+### Job Queue System
+
+**Why BullMQ + Redis?**
+- **Instant Response**: API returns immediately with jobId
+- **Background Processing**: Long-running analysis doesn't block server
+- **Scalability**: Multiple workers can process jobs in parallel
+- **Persistence**: Jobs survive server restarts
+- **Retry Logic**: Automatic retry on failures
+
+**Current Implementation:**
+- Works without Redis (synchronous fallback for development)
+- Upgrades to Redis queue when available
+- In-memory job store as fallback
+
+## 📊 Analysis Capabilities
+
+### What Gets Analyzed
+
+- **Up to 50 files** per repository (configurable)
+- **All code files**: TypeScript, JavaScript, Python, Java, Go, Rust, etc.
+- **Config files**: package.json, requirements.txt, Dockerfile, etc.
+
+### Detection Features
+
+**Security:**
+- Hardcoded secrets (passwords, API keys, tokens)
+- SQL injection vulnerabilities
+- eval() usage
+- Weak cryptographic algorithms
+- Insecure random number generation
+
+**Code Quality:**
+- Cyclomatic complexity
+- Code metrics (lines, files, languages)
+- Quality score (0-100)
+
+**Best Practices:**
+- Long lines (>150 characters)
+- TODO/FIXME comments
+- console.log in production
+- Empty catch blocks
+- Deprecated methods
+- var vs let/const
+- Loose equality (==)
+
+**Tech Stack:**
+- Frameworks (React, Vue, Angular, NestJS, Express, Django, Flask, etc.)
+- Libraries (Axios, Lodash, Tailwind CSS, etc.)
+- Build tools (Webpack, Vite, Turborepo)
+- Databases (MongoDB, PostgreSQL, MySQL, Redis, Prisma, TypeORM)
+- Other tools (Docker, TypeScript)
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd CodeGuardianAI
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up environment variables
+# Backend: Create backend/.env (see Environment Variables section)
+# Frontend: Create frontend/.env (see Environment Variables section)
+
+# 4. (Optional) Start Redis
+brew install redis && brew services start redis
+
+# 5. Start development servers
+npm run dev
+
+# 6. Open browser
+# Frontend: http://localhost:5173
+# Backend: http://localhost:3000
+```
+
+## 📚 Additional Resources
+
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [React Documentation](https://react.dev/)
+- [BullMQ Documentation](https://docs.bullmq.io/)
+- [Redis Documentation](https://redis.io/docs/)
+- [GitHub OAuth Apps](https://docs.github.com/en/apps/oauth-apps)
 
 ## 🤝 Contributing
 
@@ -393,3 +814,5 @@ Private - All rights reserved
 ---
 
 **Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅ | Phase 4 Next 🚧
+
+**Last Updated**: December 2024
