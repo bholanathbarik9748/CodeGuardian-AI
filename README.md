@@ -181,6 +181,30 @@ npm run lint
   - Consistent color theme
   - Tailwind CSS v4 styling
 
+### ✅ Completed (Phase 2: Repo Listing)
+
+- [x] **Repository Listing**
+  - GET /repos endpoint with pagination
+  - Fetch user repositories from GitHub
+  - Display repositories in beautiful grid layout
+  - Repository details (name, description, language, stars, forks)
+
+- [x] **Search & Filter**
+  - Search repositories by name or description
+  - Filter by programming language
+  - Real-time filtering
+
+- [x] **Infinite Scrolling**
+  - Automatic loading as user scrolls
+  - Handles unlimited repositories
+  - Efficient pagination (30 per page)
+  - Loading indicators
+
+- [x] **Navigation**
+  - Route to /repositories page
+  - Navigation from dashboard
+  - Protected route with authentication
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -189,6 +213,11 @@ npm run lint
 - `GET /auth/github/callback` - GitHub OAuth callback (handles token generation)
 - `GET /auth/me` - Get current user info (requires JWT token)
 - `GET /auth/logout` - Logout endpoint
+
+### Repositories
+
+- `GET /repos?page=1&per_page=30` - Get user repositories with pagination (requires JWT token)
+- `GET /repos/:owner/:repo` - Get specific repository details (requires JWT token)
 
 ### Example Usage
 
@@ -213,11 +242,12 @@ const data = await response.json();
 - [x] Routing system
 - [x] UI/UX design
 
-### 🔄 Phase 2: Repo Listing (NEXT)
-- [ ] GET /repos endpoint
-- [ ] Frontend repo selection UI
-- [ ] Repository list display
-- [ ] Repo search and filtering
+### ✅ Phase 2: Repo Listing (COMPLETED)
+- [x] GET /repos endpoint (with pagination)
+- [x] Frontend repo selection UI
+- [x] Repository list display (grid layout)
+- [x] Repo search and filtering
+- [x] Infinite scrolling for large repository lists
 
 ### 📋 Phase 3: MVP Analyzer
 - [ ] POST /analyze endpoint
@@ -287,4 +317,4 @@ Private - All rights reserved
 
 ---
 
-**Current Status**: Phase 1 Complete ✅ | Phase 2 In Progress 🚧
+**Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Next 🚧

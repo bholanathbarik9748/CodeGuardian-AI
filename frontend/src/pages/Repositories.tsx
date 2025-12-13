@@ -20,21 +20,68 @@ export interface Repository {
 export const Repositories = () => {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLanguage, setFilterLanguage] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchRepositories();
+    fetchRepositories(1, true);
   }, []);
 
-  const fetchRepositories = async () => {
+  // Infinite scroll observer
+  useEffect(() => {
+    // Only set up observer if we have repos and might have more
+    if (!hasMore || loading || repos.length === 0) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Only trigger if sentinel becomes visible AND we have more to load
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !loadingMore &&
+          !loading &&
+          repos.length > 0 // Ensure we have some repos already
+        ) {
+          loadMoreRepositories();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }, // Trigger 100px before sentinel is fully visible
+    );
+
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (sentinel) {
+      // Small delay to ensure sentinel is positioned correctly
+      setTimeout(() => {
+        observer.observe(sentinel);
+      }, 100);
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel);
+      }
+    };
+  }, [hasMore, loadingMore, loading, repos.length]);
+
+  const fetchRepositories = async (page: number = 1, reset: boolean = false) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setRepos([]);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
 
-      const response = await fetch(`${getApiUrl()}/repos`, {
+      const response = await fetch(`${getApiUrl()}/repos?page=${page}&per_page=30`, {
         headers: {
           ...getAuthHeader(),
           'Content-Type': 'application/json',
@@ -54,15 +101,35 @@ export const Repositories = () => {
 
       if (data.error) {
         setError(data.error);
-        setRepos([]);
+        if (reset) {
+          setRepos([]);
+        }
       } else {
-        setRepos(data.repos || []);
+        if (reset) {
+          setRepos(data.repos || []);
+        } else {
+          setRepos((prev) => [...prev, ...(data.repos || [])]);
+        }
+        setHasMore(data.hasMore || false);
+        setCurrentPage(page);
+        if (data.totalCount !== null) {
+          setTotalCount(data.totalCount);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch repositories');
-      setRepos([]);
+      if (reset) {
+        setRepos([]);
+      }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreRepositories = () => {
+    if (!loadingMore && hasMore) {
+      fetchRepositories(currentPage + 1, false);
     }
   };
 
@@ -130,7 +197,9 @@ export const Repositories = () => {
                   My Repositories
                 </h1>
                 <p className="text-purple-200">
-                  {repos.length} {repos.length === 1 ? 'repository' : 'repositories'}
+                  {totalCount !== null
+                    ? `${repos.length} of ${totalCount} repositories`
+                    : `${repos.length} ${repos.length === 1 ? 'repository' : 'repositories'}`}
                 </p>
               </div>
               <div className="flex items-center space-x-4">
@@ -205,62 +274,88 @@ export const Repositories = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRepos.map((repo, index) => (
-                <div
-                  key={repo.id}
-                  className={`${tailwindClasses.glassCard} p-6 hover:scale-105 transform transition-all duration-300 cursor-pointer animate-slide-up`}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                  onClick={() => window.open(repo.html_url, '_blank')}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1 flex items-center space-x-2">
-                        <span>{repo.name}</span>
-                        {repo.private && (
-                          <span className="text-xs px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 rounded text-yellow-300">
-                            Private
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRepos.map((repo, index) => (
+                  <div
+                    key={repo.id}
+                    className={`${tailwindClasses.glassCard} p-6 hover:scale-105 transform transition-all duration-300 cursor-pointer animate-slide-up`}
+                    style={{ animationDelay: `${index * 50}ms` }}
+                    onClick={() => window.open(repo.html_url, '_blank')}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-1 flex items-center space-x-2">
+                          <span>{repo.name}</span>
+                          {repo.private && (
+                            <span className="text-xs px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 rounded text-yellow-300">
+                              Private
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-purple-200 text-sm">{repo.full_name}</p>
+                      </div>
+                    </div>
+
+                    {repo.description && (
+                      <p className="text-white/80 text-sm mb-4 line-clamp-2">
+                        {repo.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-4 text-white/70">
+                        {repo.language && (
+                          <span className="flex items-center space-x-1">
+                            <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                            <span>{repo.language}</span>
                           </span>
                         )}
-                      </h3>
-                      <p className="text-purple-200 text-sm">{repo.full_name}</p>
-                    </div>
-                  </div>
-
-                  {repo.description && (
-                    <p className="text-white/80 text-sm mb-4 line-clamp-2">
-                      {repo.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-4 text-white/70">
-                      {repo.language && (
                         <span className="flex items-center space-x-1">
-                          <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                          <span>{repo.language}</span>
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                          <span>{repo.stargazers_count}</span>
                         </span>
-                      )}
-                      <span className="flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                        <span>{repo.stargazers_count}</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                        </svg>
-                        <span>{repo.forks_count}</span>
+                        <span className="flex items-center space-x-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                          </svg>
+                          <span>{repo.forks_count}</span>
+                        </span>
+                      </div>
+                      <span className="text-white/50 text-xs">
+                        Updated {formatDate(repo.updated_at)}
                       </span>
                     </div>
-                    <span className="text-white/50 text-xs">
-                      Updated {formatDate(repo.updated_at)}
-                    </span>
                   </div>
+                ))}
+              </div>
+
+              {/* Infinite Scroll Sentinel & Loading Indicator */}
+              {!searchQuery && filterLanguage === 'all' && (
+                <div id="scroll-sentinel" className="mt-8">
+                  {loadingMore && (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="relative">
+                        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-6 h-6 bg-purple-600 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                      <p className="ml-4 text-purple-200">Loading more repositories...</p>
+                    </div>
+                  )}
+                  {!hasMore && repos.length > 0 && (
+                    <div className={`${tailwindClasses.glassCard} p-6 text-center`}>
+                      <p className="text-purple-200">
+                        🎉 You've reached the end! All repositories loaded.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

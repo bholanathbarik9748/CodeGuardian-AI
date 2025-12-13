@@ -1,5 +1,4 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtPayload } from '../auth/auth.service';
 
 export interface GitHubRepository {
   id: number;
@@ -20,16 +19,25 @@ export class ReposService {
   private readonly githubApiUrl = 'https://api.github.com';
 
   /**
-   * Fetch user repositories from GitHub
+   * Fetch user repositories from GitHub with pagination
    */
-  async getUserRepositories(githubToken: string): Promise<GitHubRepository[]> {
+  async getUserRepositories(
+    githubToken: string,
+    page: number = 1,
+    perPage: number = 30,
+  ): Promise<{
+    repos: GitHubRepository[];
+    hasMore: boolean;
+    nextPage: number | null;
+    totalCount: number | null;
+  }> {
     if (!githubToken) {
       throw new UnauthorizedException('GitHub access token not found');
     }
 
     try {
       const response = await fetch(
-        `${this.githubApiUrl}/user/repos?per_page=100&sort=updated`,
+        `${this.githubApiUrl}/user/repos?page=${page}&per_page=${perPage}&sort=updated`,
         {
           headers: {
             Authorization: `token ${githubToken}`,
@@ -46,8 +54,50 @@ export class ReposService {
         throw new Error(`GitHub API error: ${response.statusText}`);
       }
 
-      const repos = await response.json();
-      return repos.map((repo: any) => ({
+      const repos = (await response.json()) as Array<{
+        id: number;
+        name: string;
+        full_name: string;
+        description: string | null;
+        private: boolean;
+        html_url: string;
+        language: string | null;
+        stargazers_count: number;
+        forks_count: number;
+        updated_at: string;
+        default_branch: string;
+      }>;
+      const linkHeader = response.headers.get('link');
+
+      // Parse Link header to determine if there are more pages
+      let hasMore = false;
+      let nextPage: number | null = null;
+
+      if (linkHeader) {
+        const links = linkHeader.split(',');
+        const nextLink = links.find((link) => link.includes('rel="next"'));
+        hasMore = !!nextLink;
+        if (nextLink) {
+          const match = nextLink.match(/[?&]page=(\d+)/);
+          if (match) {
+            nextPage = parseInt(match[1], 10);
+          }
+        }
+      } else {
+        // If no Link header, check if we got a full page
+        hasMore = repos.length === perPage;
+        if (hasMore) {
+          nextPage = page + 1;
+        }
+      }
+
+      // Get total count from Link header if available
+      const totalCountHeader = response.headers.get('x-total-count');
+      const totalCount = totalCountHeader
+        ? parseInt(totalCountHeader, 10)
+        : null;
+
+      const mappedRepos = repos.map((repo) => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
@@ -60,11 +110,20 @@ export class ReposService {
         updated_at: repo.updated_at,
         default_branch: repo.default_branch,
       }));
+
+      return {
+        repos: mappedRepos,
+        hasMore,
+        nextPage,
+        totalCount,
+      };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new Error(`Failed to fetch repositories: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to fetch repositories: ${errorMessage}`);
     }
   }
 
@@ -102,7 +161,19 @@ export class ReposService {
         throw new Error(`GitHub API error: ${response.statusText}`);
       }
 
-      const repoData = await response.json();
+      const repoData = (await response.json()) as {
+        id: number;
+        name: string;
+        full_name: string;
+        description: string | null;
+        private: boolean;
+        html_url: string;
+        language: string | null;
+        stargazers_count: number;
+        forks_count: number;
+        updated_at: string;
+        default_branch: string;
+      };
       return {
         id: repoData.id,
         name: repoData.name,
@@ -120,7 +191,9 @@ export class ReposService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new Error(`Failed to fetch repository: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to fetch repository: ${errorMessage}`);
     }
   }
 }
