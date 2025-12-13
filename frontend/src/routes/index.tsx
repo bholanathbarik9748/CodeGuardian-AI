@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { LoginPage } from '../pages/LoginPage';
 import { Dashboard } from '../pages/Dashboard';
+import { Repositories } from '../pages/Repositories';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 /**
@@ -16,6 +17,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/repositories',
+    element: (
+      <ProtectedRoute>
+        <Repositories />
       </ProtectedRoute>
     ),
   },

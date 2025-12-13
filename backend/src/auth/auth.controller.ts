@@ -26,7 +26,8 @@ export class AuthController {
   @UseGuards(AuthGuard('github'))
   async githubCallback(@Req() req: Request, @Res() res: Response) {
     // User is attached to request by Passport
-    const user = req.user as GitHubUser;
+    // Note: accessToken is included in the user object from GitHub strategy
+    const user = req.user as GitHubUser & { accessToken?: string };
 
     if (!user) {
       return res.redirect(
@@ -34,7 +35,7 @@ export class AuthController {
       );
     }
 
-    // Generate JWT token
+    // Generate JWT token (includes accessToken if available)
     const token = await this.authService.generateToken(user);
 
     if (!token) {

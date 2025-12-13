@@ -12,7 +12,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       callbackURL:
         process.env.GITHUB_CALLBACK_URL ||
         'http://localhost:3000/auth/github/callback',
-      scope: ['user:email'], // Request email access
+      scope: ['user:email', 'repo'], // Request email and repository access
     });
   }
 
@@ -20,7 +20,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-  ): GitHubUser {
+  ): GitHubUser & { accessToken: string } {
     // Extract user information from GitHub profile
     const { id, username, displayName, photos, emails } = profile;
 
@@ -35,6 +35,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       avatar_url: photos && photos.length > 0 ? photos[0].value : '',
     };
 
-    return user;
+    // Include access token for GitHub API calls
+    return { ...user, accessToken };
   }
 }

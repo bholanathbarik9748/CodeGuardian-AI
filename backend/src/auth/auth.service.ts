@@ -15,6 +15,7 @@ export interface JwtPayload {
   email: string;
   name?: string;
   avatar_url?: string;
+  githubToken?: string; // GitHub access token for API calls
 }
 
 @Injectable()
@@ -24,13 +25,14 @@ export class AuthService {
   /**
    * Generate JWT token for authenticated user
    */
-  async generateToken(user: GitHubUser): Promise<string> {
+  async generateToken(user: GitHubUser & { accessToken?: string }): Promise<string> {
     const payload: JwtPayload = {
       sub: user.id,
       username: user.login,
       email: user.email,
       name: user.name,
       avatar_url: user.avatar_url,
+      githubToken: user.accessToken, // Store GitHub access token
     };
 
     return this.jwtService.signAsync(payload);
