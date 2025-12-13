@@ -105,7 +105,45 @@ Create `frontend/.env`:
 VITE_API_URL=http://localhost:3000
 ```
 
-### 4. Install Frontend Dependencies
+### 4. Redis Setup (Required for Code Analysis)
+
+CodeGuardian AI uses BullMQ for job queue management, which requires Redis.
+
+**macOS (using Homebrew):**
+```bash
+brew install redis
+brew services start redis
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update
+sudo apt-get install redis-server
+sudo systemctl start redis
+```
+
+**Windows:**
+- Download Redis from [redis.io](https://redis.io/download)
+- Or use WSL2 with the Linux instructions above
+
+**Docker (Alternative):**
+```bash
+docker run -d -p 6379:6379 --name redis redis:alpine
+```
+
+**Verify Redis is running:**
+```bash
+redis-cli ping
+# Should return: PONG
+```
+
+Add Redis configuration to `backend/.env`:
+```env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+### 5. Install Frontend Dependencies
 
 ```bash
 cd frontend
@@ -205,6 +243,35 @@ npm run lint
   - Navigation from dashboard
   - Protected route with authentication
 
+### ✅ Completed (Phase 3: MVP Analyzer)
+
+- [x] **Code Analysis**
+  - POST /analyze endpoint to start analysis
+  - BullMQ job queue for async processing
+  - Fetches repository files from GitHub
+  - Analyzes code quality, security, and best practices
+
+- [x] **Analysis Features**
+  - Security issue detection (hardcoded secrets, SQL injection, eval usage)
+  - Code quality metrics (complexity, line count, language distribution)
+  - Best practice checks (long lines, TODO comments, console.log)
+  - Quality score calculation (0-100)
+
+- [x] **Frontend Analysis UI**
+  - "Analyze Code" button on each repository
+  - Real-time status polling (every 2 seconds)
+  - Progress indicator during analysis
+  - Comprehensive results display with:
+    - Summary (files, lines, languages)
+    - Metrics (complexity, quality score)
+    - Security issues with severity levels
+    - Best practice recommendations
+
+- [x] **Job Management**
+  - GET /analyze/:jobId for status checking
+  - In-memory job store (can be upgraded to Redis)
+  - Job status tracking (pending, processing, completed, failed)
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -218,6 +285,14 @@ npm run lint
 
 - `GET /repos?page=1&per_page=30` - Get user repositories with pagination (requires JWT token)
 - `GET /repos/:owner/:repo` - Get specific repository details (requires JWT token)
+
+### Analysis
+
+- `POST /analyze` - Start code analysis for a repository (requires JWT token)
+  - Body: `{ owner: string, repo: string }`
+  - Returns: `{ jobId: string, message: string, statusUrl: string }`
+- `GET /analyze/:jobId` - Get analysis job status and results (requires JWT token)
+  - Returns: Analysis job with status, progress, and results
 
 ### Example Usage
 
@@ -249,12 +324,12 @@ const data = await response.json();
 - [x] Repo search and filtering
 - [x] Infinite scrolling for large repository lists
 
-### 📋 Phase 3: MVP Analyzer
-- [ ] POST /analyze endpoint
-- [ ] Job queue (BullMQ)
-- [ ] Basic code analysis
-- [ ] Frontend polling + results display
-- [ ] Analysis report UI
+### ✅ Phase 3: MVP Analyzer (COMPLETED)
+- [x] POST /analyze endpoint
+- [x] Job queue (BullMQ)
+- [x] Basic code analysis
+- [x] Frontend polling + results display
+- [x] Analysis report UI
 
 ### 🚀 Phase 4: Enhancements
 - [ ] PR support
@@ -317,4 +392,4 @@ Private - All rights reserved
 
 ---
 
-**Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Next 🚧
+**Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅ | Phase 4 Next 🚧

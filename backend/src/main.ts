@@ -42,6 +42,38 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Suppress Redis/ioredis connection errors (they're expected if Redis isn't running)
+  const originalError = console.error;
+  const originalLog = console.log;
+  
+  const isRedisError = (message: string): boolean => {
+    return (
+      message.includes('ECONNREFUSED') ||
+      message.includes('Connection is closed') ||
+      (message.includes('6379') && message.includes('connect')) ||
+      message.includes('ioredis') ||
+      (message.includes('Redis') && message.includes('connection'))
+    );
+  };
+
+  console.error = (...args: any[]) => {
+    const message = args[0]?.toString() || '';
+    if (isRedisError(message)) {
+      // Silently ignore Redis connection errors (analysis will work synchronously)
+      return;
+    }
+    originalError.apply(console, args);
+  };
+
+  console.log = (...args: any[]) => {
+    const message = args[0]?.toString() || '';
+    if (isRedisError(message)) {
+      // Silently ignore Redis connection errors
+      return;
+    }
+    originalLog.apply(console, args);
+  };
+
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'], // Reduce verbosity - only show errors, warnings, and our custom logs
   });

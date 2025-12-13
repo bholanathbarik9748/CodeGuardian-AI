@@ -27,6 +27,7 @@ export const Repositories = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [analyzingRepo, setAnalyzingRepo] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -136,6 +137,38 @@ export const Repositories = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/', { replace: true });
+  };
+
+  const handleAnalyze = async (repo: Repository, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    const [owner, repoName] = repo.full_name.split('/');
+    setAnalyzingRepo(repo.full_name);
+
+    try {
+      const response = await fetch(`${getApiUrl()}/analyze`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ owner, repo: repoName }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await logout();
+          navigate('/', { replace: true });
+          return;
+        }
+        throw new Error('Failed to start analysis');
+      }
+
+      const data = await response.json();
+      navigate(`/analysis?jobId=${data.jobId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start analysis');
+      setAnalyzingRepo(null);
+    }
   };
 
   // Filter and search repositories
@@ -303,7 +336,7 @@ export const Repositories = () => {
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm mb-4">
                       <div className="flex items-center space-x-4 text-white/70">
                         {repo.language && (
                           <span className="flex items-center space-x-1">
@@ -328,6 +361,27 @@ export const Repositories = () => {
                         Updated {formatDate(repo.updated_at)}
                       </span>
                     </div>
+
+                    {/* Analyze Button */}
+                    <button
+                      onClick={(e) => handleAnalyze(repo, e)}
+                      disabled={analyzingRepo === repo.full_name}
+                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center space-x-2"
+                    >
+                      {analyzingRepo === repo.full_name ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Starting Analysis...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                          <span>Analyze Code</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 ))}
               </div>

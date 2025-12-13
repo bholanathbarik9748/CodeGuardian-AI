@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { LoginPage } from '../pages/LoginPage';
 import { Dashboard } from '../pages/Dashboard';
 import { Repositories } from '../pages/Repositories';
+import { Analysis } from '../pages/Analysis';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 /**
@@ -25,6 +26,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Repositories />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/analysis',
+    element: (
+      <ProtectedRoute>
+        <Analysis />
       </ProtectedRoute>
     ),
   },
