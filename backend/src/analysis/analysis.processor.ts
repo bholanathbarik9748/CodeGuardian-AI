@@ -1,5 +1,6 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { AnalysisService, type AnalysisResult } from './analysis.service';
+import { LLMService } from './llm.service';
 
 // Try to import BullMQ, but make it optional
 let Processor: any;
@@ -32,8 +33,9 @@ const ProcessorDecorator = Processor
 export async function processAnalysisJob(
   data: AnalysisJobData,
   analysisService: AnalysisService,
+  llmService: LLMService,
 ): Promise<AnalysisResult> {
-  const processor = new AnalysisProcessor(analysisService);
+  const processor = new AnalysisProcessor(analysisService, llmService);
   return processor.process({ data } as any);
 }
 
@@ -43,6 +45,7 @@ export class AnalysisProcessor extends WorkerHost {
   constructor(
     @Inject(forwardRef(() => AnalysisService))
     private readonly analysisService: AnalysisService,
+    private readonly llmService: LLMService,
   ) {
     super();
   }
@@ -66,11 +69,11 @@ export class AnalysisProcessor extends WorkerHost {
         progress: 30,
       });
 
-      // Analyze files
+      // Analyze files (includes LLM filtering if enabled)
       const analysisResult = await this.analyzeFiles(files, owner, repo);
 
       this.analysisService.updateJobStatus(jobId, {
-        progress: 90,
+        progress: this.llmService.isEnabled() ? 95 : 90, // LLM takes extra time
       });
 
       // Mark as completed
@@ -209,6 +212,7 @@ export class AnalysisProcessor extends WorkerHost {
     // Detect tech stack from files
     const techStack = this.detectTechStack(files);
 
+    // Step 1: Run regex-based detection (fast, catches obvious issues)
     for (const file of files) {
       // Count lines
       const lines = file.content.split('\n').length;
@@ -222,17 +226,68 @@ export class AnalysisProcessor extends WorkerHost {
       totalComplexity += complexity;
       maxComplexity = Math.max(maxComplexity, complexity);
 
-      // Check for security issues
+      // Check for security issues (regex-based)
       this.checkSecurityIssues(file, securityIssues);
 
-      // Check for best practices
+      // Check for best practices (regex-based)
       this.checkBestPractices(file, bestPracticeIssues);
+    }
+
+    // Step 2: Use LLM to filter false positives (if enabled)
+    let filteredSecurityIssues = securityIssues;
+    let filteredBestPracticeIssues = bestPracticeIssues;
+
+    if (this.llmService.isEnabled()) {
+      // Group issues by file for efficient LLM processing
+      const securityByFile = new Map<string, typeof securityIssues>();
+      const bestPracticeByFile = new Map<string, typeof bestPracticeIssues>();
+
+      securityIssues.forEach((issue) => {
+        if (!securityByFile.has(issue.file)) {
+          securityByFile.set(issue.file, []);
+        }
+        securityByFile.get(issue.file)!.push(issue);
+      });
+
+      bestPracticeIssues.forEach((issue) => {
+        if (!bestPracticeByFile.has(issue.file)) {
+          bestPracticeByFile.set(issue.file, []);
+        }
+        bestPracticeByFile.get(issue.file)!.push(issue);
+      });
+
+      // Process each file's issues with LLM
+      const fileMap = new Map(
+        files.map((f) => [f.path, f.content]),
+      );
+
+      // Filter security issues
+      const securityPromises: Promise<typeof securityIssues>[] = [];
+      for (const [filePath, fileIssues] of securityByFile.entries()) {
+        const fileContent = fileMap.get(filePath) || '';
+        securityPromises.push(
+          this.llmService.analyzeSecurityIssues(fileIssues, fileContent),
+        );
+      }
+      const filteredSecurityArrays = await Promise.all(securityPromises);
+      filteredSecurityIssues = filteredSecurityArrays.flat();
+
+      // Filter best practice issues
+      const bestPracticePromises: Promise<typeof bestPracticeIssues>[] = [];
+      for (const [filePath, fileIssues] of bestPracticeByFile.entries()) {
+        const fileContent = fileMap.get(filePath) || '';
+        bestPracticePromises.push(
+          this.llmService.analyzeBestPractices(fileIssues, fileContent),
+        );
+      }
+      const filteredBestPracticeArrays = await Promise.all(bestPracticePromises);
+      filteredBestPracticeIssues = filteredBestPracticeArrays.flat();
     }
 
     const avgComplexity = files.length > 0 ? totalComplexity / files.length : 0;
     const codeQualityScore = this.calculateQualityScore(
-      securityIssues.length,
-      bestPracticeIssues.length,
+      filteredSecurityIssues.length,
+      filteredBestPracticeIssues.length,
       avgComplexity,
     );
 
@@ -250,12 +305,12 @@ export class AnalysisProcessor extends WorkerHost {
         },
         codeQuality: {
           score: codeQualityScore,
-          issues: securityIssues.length + bestPracticeIssues.length,
+          issues: filteredSecurityIssues.length + filteredBestPracticeIssues.length,
         },
       },
       findings: {
-        security: securityIssues,
-        bestPractices: bestPracticeIssues,
+        security: filteredSecurityIssues,
+        bestPractices: filteredBestPracticeIssues,
       },
     };
   }

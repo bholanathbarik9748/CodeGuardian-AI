@@ -3,6 +3,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { Dashboard } from '../pages/Dashboard';
 import { Repositories } from '../pages/Repositories';
 import { Analysis } from '../pages/Analysis';
+import { History } from '../pages/History';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 /**
@@ -34,6 +35,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Analysis />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/history',
+    element: (
+      <ProtectedRoute>
+        <History />
       </ProtectedRoute>
     ),
   },

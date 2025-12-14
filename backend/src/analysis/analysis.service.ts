@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import type { JwtPayload } from '../auth/auth.service';
+import { LLMService } from './llm.service';
 
 // Try to import BullMQ, but make it optional
 let InjectQueue: any;
@@ -14,6 +15,7 @@ try {
 
 export interface AnalysisJob {
   id: string;
+  userId: number; // GitHub user ID who started the analysis
   repository: {
     owner: string;
     repo: string;
@@ -77,7 +79,10 @@ const jobStore = new Map<string, AnalysisJob>();
 export class AnalysisService {
   private analysisQueue: any;
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => LLMService))
+    private readonly llmService: LLMService,
+  ) {
     // Queue injection will be handled by NestJS if BullMQ is available
     // For now, we'll process synchronously if BullMQ is not available
   }
@@ -101,6 +106,7 @@ export class AnalysisService {
     // Create job record
     const job: AnalysisJob = {
       id: jobId,
+      userId: user.sub, // Store user ID for history filtering
       repository: { owner, repo, fullName },
       status: 'pending',
       progress: 0,
@@ -132,7 +138,7 @@ export class AnalysisService {
           // Use require to avoid TypeScript module resolution issues
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           const processorModule = require('./analysis.processor');
-          const processor = new processorModule.AnalysisProcessor(this);
+          const processor = new processorModule.AnalysisProcessor(this, this.llmService);
           await processor.process({
             data: {
               jobId,
@@ -184,5 +190,103 @@ export class AnalysisService {
     return Array.from(jobStore.values()).filter(
       (job) => job.repository.owner === String(userId), // Simple filter, can be improved
     );
+  }
+
+  /**
+   * Get analysis history for a user (sorted by date, most recent first)
+   */
+  getUserHistory(userId: number): AnalysisJob[] {
+    const allJobs = Array.from(jobStore.values());
+    // Filter by user ID and completed jobs, sort by completion date
+    return allJobs
+      .filter((job) => job.userId === userId && job.status === 'completed' && job.result)
+      .sort((a, b) => {
+        const dateA = a.completedAt?.getTime() || 0;
+        const dateB = b.completedAt?.getTime() || 0;
+        return dateB - dateA; // Most recent first
+      })
+      .slice(0, 50); // Limit to last 50 analyses
+  }
+
+  /**
+   * Generate CSV export from analysis job
+   */
+  generateCsv(job: AnalysisJob): string {
+    if (!job.result) {
+      return '';
+    }
+
+    const lines: string[] = [];
+    
+    // Header
+    lines.push('CodeGuardian AI - Analysis Report');
+    lines.push(`Repository: ${job.repository.fullName}`);
+    lines.push(`Analyzed At: ${job.completedAt?.toISOString() || 'N/A'}`);
+    lines.push('');
+    
+    // Summary
+    lines.push('SUMMARY');
+    lines.push('Metric,Value');
+    lines.push(`Total Files,${job.result.summary.totalFiles}`);
+    lines.push(`Total Lines,${job.result.summary.totalLines}`);
+    lines.push(`Quality Score,${job.result.metrics.codeQuality.score}`);
+    lines.push(`Average Complexity,${job.result.metrics.complexity.average.toFixed(2)}`);
+    lines.push(`Max Complexity,${job.result.metrics.complexity.max}`);
+    lines.push(`Security Issues,${job.result.findings.security.length}`);
+    lines.push(`Best Practice Issues,${job.result.findings.bestPractices.length}`);
+    lines.push('');
+    
+    // Languages
+    lines.push('LANGUAGES');
+    lines.push('Language,Lines');
+    Object.entries(job.result.summary.languages).forEach(([lang, count]) => {
+      lines.push(`${lang},${count}`);
+    });
+    lines.push('');
+    
+    // Tech Stack
+    lines.push('TECH STACK');
+    lines.push('Category,Technologies');
+    if (job.result.summary.techStack.frameworks.length > 0) {
+      lines.push(`Frameworks,"${job.result.summary.techStack.frameworks.join(', ')}"`);
+    }
+    if (job.result.summary.techStack.libraries.length > 0) {
+      lines.push(`Libraries,"${job.result.summary.techStack.libraries.join(', ')}"`);
+    }
+    if (job.result.summary.techStack.buildTools.length > 0) {
+      lines.push(`Build Tools,"${job.result.summary.techStack.buildTools.join(', ')}"`);
+    }
+    if (job.result.summary.techStack.databases.length > 0) {
+      lines.push(`Databases,"${job.result.summary.techStack.databases.join(', ')}"`);
+    }
+    if (job.result.summary.techStack.other.length > 0) {
+      lines.push(`Other,"${job.result.summary.techStack.other.join(', ')}"`);
+    }
+    lines.push('');
+    
+    // Security Issues
+    if (job.result.findings.security.length > 0) {
+      lines.push('SECURITY ISSUES');
+      lines.push('File,Line,Severity,Message,Recommendation');
+      job.result.findings.security.forEach((issue) => {
+        const message = (issue.message || '').replace(/"/g, '""');
+        const recommendation = (issue.recommendation || '').replace(/"/g, '""');
+        lines.push(`"${issue.file}",${issue.line},${issue.severity},"${message}","${recommendation}"`);
+      });
+      lines.push('');
+    }
+    
+    // Best Practices
+    if (job.result.findings.bestPractices.length > 0) {
+      lines.push('BEST PRACTICES');
+      lines.push('File,Line,Message,Recommendation');
+      job.result.findings.bestPractices.forEach((issue) => {
+        const message = (issue.message || '').replace(/"/g, '""');
+        const recommendation = (issue.recommendation || '').replace(/"/g, '""');
+        lines.push(`"${issue.file}",${issue.line},"${message}","${recommendation}"`);
+      });
+    }
+    
+    return lines.join('\n');
   }
 }

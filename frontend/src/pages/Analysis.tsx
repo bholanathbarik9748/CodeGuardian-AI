@@ -141,6 +141,52 @@ export const Analysis = () => {
     }
   };
 
+  const handleExport = async (format: 'json' | 'csv') => {
+    if (!jobId || !job || job.status !== 'completed') {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${getApiUrl()}/analyze/${jobId}/export/${format}`, {
+        headers: {
+          ...getAuthHeader(),
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await logout();
+          navigate('/', { replace: true });
+          return;
+        }
+        throw new Error('Failed to export analysis');
+      }
+
+      // Get filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${job.repository.fullName.replace('/', '-')}-analysis-${jobId}.${format}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export analysis');
+    }
+  };
+
   if (loading && !job) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 bg-[length:200%_200%] animate-gradient flex items-center justify-center">
@@ -200,19 +246,48 @@ export const Analysis = () => {
 
         {/* Repository Info */}
         <div className={`${tailwindClasses.glassCard} p-6 mb-6`}>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {job.repository.fullName}
-          </h1>
-          <div className="flex items-center space-x-4">
-            <span className={`text-lg font-semibold ${getStatusColor(job.status)}`}>
-              {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-            </span>
-            {job.status === 'processing' && (
-              <div className="flex-1 bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full transition-all duration-300"
-                  style={{ width: `${job.progress}%` }}
-                ></div>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {job.repository.fullName}
+              </h1>
+              <div className="flex items-center space-x-4">
+                <span className={`text-lg font-semibold ${getStatusColor(job.status)}`}>
+                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                </span>
+                {job.status === 'processing' && (
+                  <div className="flex-1 bg-gray-700/50 rounded-full h-2 overflow-hidden max-w-md">
+                    <div
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full transition-all duration-300"
+                      style={{ width: `${job.progress}%` }}
+                    ></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Export Buttons */}
+            {job.status === 'completed' && job.result && (
+              <div className="flex items-center space-x-2 ml-4">
+                <button
+                  onClick={() => handleExport('json')}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105"
+                  title="Export as JSON"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">JSON</span>
+                </button>
+                <button
+                  onClick={() => handleExport('csv')}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105"
+                  title="Export as CSV"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">CSV</span>
+                </button>
               </div>
             )}
           </div>
@@ -383,7 +458,7 @@ export const Analysis = () => {
                 <h2 className="text-2xl font-bold text-white mb-4">
                   Security Issues ({job.result.findings.security.length})
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {job.result.findings.security.map((issue, idx) => (
                     <div
                       key={idx}
@@ -427,7 +502,7 @@ export const Analysis = () => {
                 <h2 className="text-2xl font-bold text-white mb-4">
                   Best Practices ({job.result.findings.bestPractices.length})
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {job.result.findings.bestPractices.map((issue, idx) => (
                     <div
                       key={idx}

@@ -28,6 +28,8 @@ export const Repositories = () => {
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [analyzingRepo, setAnalyzingRepo] = useState<string | null>(null);
+  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
+  const [batchAnalyzing, setBatchAnalyzing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -171,6 +173,66 @@ export const Repositories = () => {
     }
   };
 
+  const toggleRepoSelection = (repoFullName: string) => {
+    const newSelected = new Set(selectedRepos);
+    if (newSelected.has(repoFullName)) {
+      newSelected.delete(repoFullName);
+    } else {
+      if (newSelected.size >= 10) {
+        setError('Maximum 10 repositories can be selected for batch analysis');
+        return;
+      }
+      newSelected.add(repoFullName);
+    }
+    setSelectedRepos(newSelected);
+    setError(null);
+  };
+
+  const handleBatchAnalyze = async () => {
+    if (selectedRepos.size === 0) {
+      setError('Please select at least one repository');
+      return;
+    }
+
+    setBatchAnalyzing(true);
+    setError(null);
+
+    try {
+      const repositories = Array.from(selectedRepos).map((fullName) => {
+        const [owner, repo] = fullName.split('/');
+        return { owner, repo };
+      });
+
+      const response = await fetch(`${getApiUrl()}/analyze/batch`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ repositories }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await logout();
+          navigate('/', { replace: true });
+          return;
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start batch analysis');
+      }
+
+      const data = await response.json();
+      setSelectedRepos(new Set());
+      // Navigate to history page to see all analyses
+      navigate('/history');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start batch analysis');
+    } finally {
+      setBatchAnalyzing(false);
+    }
+  };
+
   // Filter and search repositories
   const filteredRepos = repos.filter((repo) => {
     const matchesSearch =
@@ -237,6 +299,12 @@ export const Repositories = () => {
               </div>
               <div className="flex items-center space-x-4">
                 <button
+                  onClick={() => navigate('/history')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transform transition-all duration-300 hover:scale-105"
+                >
+                  History
+                </button>
+                <button
                   onClick={() => navigate('/dashboard')}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transform transition-all duration-300 hover:scale-105"
                 >
@@ -288,6 +356,32 @@ export const Repositories = () => {
                 </div>
               </div>
             </div>
+
+            {/* Batch Analysis Controls */}
+            {selectedRepos.size > 0 && (
+              <div className={`${tailwindClasses.glassCard} p-4 mt-4 animate-slide-up border-2 border-purple-500/50`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-white font-semibold">
+                      {selectedRepos.size} {selectedRepos.size === 1 ? 'repository' : 'repositories'} selected
+                    </span>
+                    <button
+                      onClick={() => setSelectedRepos(new Set())}
+                      className="text-purple-300 hover:text-purple-200 text-sm underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleBatchAnalyze}
+                    disabled={batchAnalyzing}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105"
+                  >
+                    {batchAnalyzing ? 'Starting...' : `Analyze ${selectedRepos.size} ${selectedRepos.size === 1 ? 'Repository' : 'Repositories'}`}
+                  </button>
+                </div>
+              </div>
+            )}
           </header>
 
           {/* Error Message */}
@@ -318,15 +412,27 @@ export const Repositories = () => {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white mb-1 flex items-center space-x-2">
-                          <span>{repo.name}</span>
-                          {repo.private && (
-                            <span className="text-xs px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 rounded text-yellow-300">
-                              Private
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-purple-200 text-sm">{repo.full_name}</p>
+                        <div className="flex items-center space-x-2 mb-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedRepos.has(repo.full_name)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleRepoSelection(repo.full_name);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-5 h-5 rounded border-white/30 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer"
+                          />
+                          <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                            <span>{repo.name}</span>
+                            {repo.private && (
+                              <span className="text-xs px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 rounded text-yellow-300">
+                                Private
+                              </span>
+                            )}
+                          </h3>
+                        </div>
+                        <p className="text-purple-200 text-sm ml-7">{repo.full_name}</p>
                       </div>
                     </div>
 

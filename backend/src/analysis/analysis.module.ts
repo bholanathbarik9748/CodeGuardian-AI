@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 import { AnalysisProcessor } from './analysis.processor';
+import { LLMService } from './llm.service';
 import { AuthModule } from '../auth/auth.module';
 
 // Try to import BullMQ, but make it optional
@@ -38,12 +39,13 @@ if (BullModule) {
   controllers: [AnalysisController],
   providers: [
     AnalysisService,
+    LLMService,
     {
       provide: AnalysisProcessor,
-      useFactory: (analysisService: AnalysisService) => {
-        return new AnalysisProcessor(analysisService);
+      useFactory: (analysisService: AnalysisService, llmService: LLMService) => {
+        return new AnalysisProcessor(analysisService, llmService);
       },
-      inject: [AnalysisService],
+      inject: [AnalysisService, LLMService],
     },
   ],
   exports: [AnalysisService],
