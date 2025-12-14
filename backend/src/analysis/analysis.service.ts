@@ -289,4 +289,203 @@ export class AnalysisService {
     
     return lines.join('\n');
   }
+
+  /**
+   * Generate PDF export from analysis job
+   */
+  async generatePdf(job: AnalysisJob): Promise<Buffer> {
+    if (!job.result) {
+      throw new Error('Analysis result not available');
+    }
+
+    // Type guard - we know result exists after the check above
+    const result = job.result;
+
+    // Try to import PDFKit, but make it optional
+    let PDFDocument: any;
+    try {
+      PDFDocument = require('pdfkit');
+    } catch (e) {
+      throw new Error('PDFKit not installed. Run: npm install pdfkit @types/pdfkit');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const chunks: Buffer[] = [];
+
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        // Header
+        doc.fontSize(20).text('CodeGuardian AI', { align: 'center' });
+        doc.fontSize(16).text('Analysis Report', { align: 'center' });
+        doc.moveDown();
+
+        // Repository Info
+        doc.fontSize(14).text(`Repository: ${job.repository.fullName}`, { underline: true });
+        doc.fontSize(10).text(`Analyzed At: ${job.completedAt?.toLocaleString() || 'N/A'}`);
+        doc.moveDown(2);
+
+        // Summary
+        doc.fontSize(14).text('Summary', { underline: true });
+        doc.fontSize(10);
+        doc.text(`Total Files: ${result.summary.totalFiles}`);
+        doc.text(`Total Lines: ${result.summary.totalLines.toLocaleString()}`);
+        doc.text(`Quality Score: ${result.metrics.codeQuality.score}/100`);
+        doc.text(`Average Complexity: ${result.metrics.complexity.average.toFixed(2)}`);
+        doc.text(`Max Complexity: ${result.metrics.complexity.max}`);
+        doc.text(`Security Issues: ${result.findings.security.length}`);
+        doc.text(`Best Practice Issues: ${result.findings.bestPractices.length}`);
+        doc.moveDown();
+
+        // Languages
+        if (Object.keys(result.summary.languages).length > 0) {
+          doc.fontSize(14).text('Languages', { underline: true });
+          doc.fontSize(10);
+          Object.entries(result.summary.languages)
+            .sort(([, a], [, b]) => b - a)
+            .forEach(([lang, count]) => {
+              doc.text(`${lang}: ${count.toLocaleString()} lines`);
+            });
+          doc.moveDown();
+        }
+
+        // Tech Stack
+        const techStack = result.summary.techStack;
+        if (
+          techStack.frameworks.length > 0 ||
+          techStack.libraries.length > 0 ||
+          techStack.buildTools.length > 0 ||
+          techStack.databases.length > 0 ||
+          techStack.other.length > 0
+        ) {
+          doc.fontSize(14).text('Tech Stack', { underline: true });
+          doc.fontSize(10);
+          if (techStack.frameworks.length > 0) {
+            doc.text(`Frameworks: ${techStack.frameworks.join(', ')}`);
+          }
+          if (techStack.libraries.length > 0) {
+            doc.text(`Libraries: ${techStack.libraries.join(', ')}`);
+          }
+          if (techStack.buildTools.length > 0) {
+            doc.text(`Build Tools: ${techStack.buildTools.join(', ')}`);
+          }
+          if (techStack.databases.length > 0) {
+            doc.text(`Databases: ${techStack.databases.join(', ')}`);
+          }
+          if (techStack.other.length > 0) {
+            doc.text(`Other: ${techStack.other.join(', ')}`);
+          }
+          doc.moveDown();
+        }
+
+        // Security Issues (limit to first 20 for PDF)
+        if (result.findings.security.length > 0) {
+          doc.addPage();
+          doc.fontSize(14).text(`Security Issues (${result.findings.security.length})`, {
+            underline: true,
+          });
+          doc.fontSize(10);
+          result.findings.security.slice(0, 20).forEach((issue, idx) => {
+            if (idx > 0) doc.moveDown(0.5);
+            doc.fontSize(11).text(`${issue.file}:${issue.line} [${issue.severity.toUpperCase()}]`, {
+              continued: false,
+            });
+            doc.fontSize(10).text(issue.message);
+            if (issue.recommendation) {
+              doc.fontSize(9).text(`💡 ${issue.recommendation}`, { indent: 10 });
+            }
+            if (idx < 19) doc.moveDown();
+          });
+          if (result.findings.security.length > 20) {
+            doc.moveDown();
+            doc.fontSize(9).text(
+              `... and ${result.findings.security.length - 20} more security issues`,
+              { italic: true },
+            );
+          }
+        }
+
+        // Best Practices (limit to first 20 for PDF)
+        if (result.findings.bestPractices.length > 0) {
+          doc.addPage();
+          doc.fontSize(14).text(
+            `Best Practices (${result.findings.bestPractices.length})`,
+            { underline: true },
+          );
+          doc.fontSize(10);
+          result.findings.bestPractices.slice(0, 20).forEach((issue, idx) => {
+            if (idx > 0) doc.moveDown(0.5);
+            doc.fontSize(11).text(`${issue.file}:${issue.line}`, { continued: false });
+            doc.fontSize(10).text(issue.message);
+            if (issue.recommendation) {
+              doc.fontSize(9).text(`💡 ${issue.recommendation}`, { indent: 10 });
+            }
+            if (idx < 19) doc.moveDown();
+          });
+          if (result.findings.bestPractices.length > 20) {
+            doc.moveDown();
+            doc.fontSize(9).text(
+              `... and ${result.findings.bestPractices.length - 20} more best practice issues`,
+              { italic: true },
+            );
+          }
+        }
+
+        // Footer
+        doc.fontSize(8).text(
+          `Generated by CodeGuardian AI on ${new Date().toLocaleString()}`,
+          50,
+          doc.page.height - 50,
+          { align: 'center' },
+        );
+
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Send webhook notification when analysis completes
+   */
+  async sendWebhookNotification(jobId: string, status: 'completed' | 'failed'): Promise<void> {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) {
+      return; // Webhook not configured
+    }
+
+    try {
+      const job = this.getJobStatus(jobId);
+      const payload = {
+        event: 'analysis.completed',
+        jobId: job.id,
+        repository: job.repository,
+        status: job.status,
+        progress: job.progress,
+        completedAt: job.completedAt,
+        result: status === 'completed' ? {
+          summary: job.result?.summary,
+          metrics: job.result?.metrics,
+          totalIssues: (job.result?.findings.security.length || 0) + (job.result?.findings.bestPractices.length || 0),
+        } : undefined,
+        error: status === 'failed' ? job.error : undefined,
+      };
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'CodeGuardianAI/1.0',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      // Silently fail - webhook is optional
+      console.warn('Webhook notification failed:', error);
+    }
+  }
 }

@@ -12,9 +12,11 @@ CodeGuardian AI is a modern, full-stack web application that provides comprehens
 - 📈 **Code Quality Metrics** - Complexity analysis, quality scores, and recommendations
 - 🎯 **Tech Stack Detection** - Automatically identify frameworks, libraries, and tools
 - 🤖 **LLM-Powered Analysis** - AI-powered false positive reduction (60-80% reduction)
-- 📤 **Export Reports** - Export analysis results as JSON or CSV
+- 📤 **Export Reports** - Export analysis results as JSON, CSV, or PDF
 - 📜 **Analysis History** - View and manage past analyses
-- 🔄 **Batch Analysis** - Analyze multiple repositories simultaneously
+- 🔄 **Batch Analysis** - Analyze multiple repositories simultaneously (up to 10)
+- 📊 **Analytics Dashboard** - Comprehensive metrics, trends, and insights
+- 🔔 **Webhook Notifications** - Real-time notifications for analysis completion
 - 🚀 **Real-time Progress** - Live status updates during analysis
 - 💎 **Modern UI** - Beautiful glassmorphism design with smooth animations
 
@@ -41,7 +43,9 @@ CodeGuardianAI/
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── Repositories.tsx
-│   │   │   └── Analysis.tsx
+│   │   │   ├── Analysis.tsx
+│   │   │   ├── History.tsx
+│   │   │   └── Analytics.tsx
 │   │   ├── routes/              # React Router configuration
 │   │   ├── utils/               # Utility functions (auth, API)
 │   │   └── constants/           # Color constants and theme
@@ -61,7 +65,8 @@ CodeGuardianAI/
 │   │   │   ├── analysis.controller.ts
 │   │   │   ├── analysis.service.ts
 │   │   │   ├── analysis.processor.ts
-│   │   │   └── analysis.module.ts
+│   │   │   ├── analysis.module.ts
+│   │   │   └── llm.service.ts    # LLM-powered analysis service
 │   │   └── main.ts
 │   └── package.json
 ├── turbo.json                   # Turborepo configuration
@@ -88,6 +93,8 @@ CodeGuardianAI/
 - **BullMQ** - Job queue system for async processing
 - **Redis** - In-memory data store for job queue
 - **ioredis** - Redis client for Node.js
+- **OpenAI** - GPT-4 for intelligent code analysis (optional)
+- **PDFKit** - PDF report generation (optional)
 
 ### Infrastructure
 - **Turborepo** - High-performance monorepo build system
@@ -175,6 +182,12 @@ CodeGuardian AI uses a **hybrid approach** for code analysis:
    cd backend
    npm install openai
    ```
+
+**For PDF Export (Optional):**
+```bash
+cd backend
+npm install pdfkit @types/pdfkit
+```
 
 **Cost Estimate:**
 - Small repo (50 files): ~$0.05-0.20 per analysis
@@ -389,6 +402,28 @@ npm run lint
 - [x] **Batch Analysis** - Analyze up to 10 repositories simultaneously
 - [x] **Smart Error Handling** - Graceful fallback when LLM quota is exceeded
 
+### ✅ Completed (Phase 5: Advanced Features)
+
+- [x] **PDF Export** - Professional PDF report generation
+  - Formatted reports with summary, languages, tech stack
+  - Security issues and best practices (first 20 of each)
+  - Automatic pagination and professional layout
+  - One-click download from analysis page
+
+- [x] **Advanced Analytics Dashboard** - Comprehensive metrics and insights
+  - Overview statistics (total analyses, average quality, total issues, repos analyzed)
+  - 7-day trends chart showing analyses per day and average quality
+  - Top languages distribution
+  - Most common security issues
+  - Most common best practice issues
+  - Accessible via `/analytics` route
+
+- [x] **Webhook Notifications** - Real-time integration support
+  - Automatic POST requests when analysis completes or fails
+  - Configurable via `WEBHOOK_URL` environment variable
+  - Includes job details, repository info, and results summary
+  - Graceful fallback if webhook is not configured
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -476,6 +511,34 @@ npm run lint
 
 - `GET /analyze/history/list` - Get analysis history for current user (requires JWT token)
   - **Returns**: `{ "count": 5, "analyses": [...] }`
+
+- `GET /analyze/:jobId/export/pdf` - Export analysis as PDF (requires JWT token)
+  - **Returns**: PDF file download with formatted analysis report
+  - **Note**: Requires `pdfkit` package: `npm install pdfkit @types/pdfkit`
+
+- `GET /analyze/analytics` - Get analytics and statistics for current user (requires JWT token)
+  - **Returns**: 
+    ```json
+    {
+      "totalAnalyses": 10,
+      "averageQualityScore": 85.5,
+      "totalIssues": 150,
+      "repositoriesAnalyzed": 5,
+      "recentAnalyses": 3,
+      "trends": [
+        { "date": "2024-12-07", "analyses": 2, "averageQuality": 88 }
+      ],
+      "languageDistribution": [
+        { "language": "TypeScript", "totalLines": 50000 }
+      ],
+      "topSecurityIssues": [
+        { "message": "Hardcoded secret detected", "count": 5 }
+      ],
+      "topBestPractices": [
+        { "message": "console.log() in production code", "count": 10 }
+      ]
+    }
+    ```
 
 ### Example API Usage
 
@@ -570,14 +633,17 @@ const pollInterval = setInterval(async () => {
 - [x] **Smart Error Handling** - Graceful fallback when LLM quota is exceeded
 - [x] **Hybrid Analysis** - Combines fast regex detection with intelligent LLM validation
 
-### 🚀 Phase 5: Future Enhancements
+### ✅ Phase 5: Advanced Features (COMPLETED)
+- [x] **PDF Export** - Professional PDF report generation with formatting
+- [x] **Advanced Analytics Dashboard** - Historical trends, metrics, language distribution, top issues
+- [x] **Webhook Notifications** - Real-time notifications for analysis completion/failure
+
+### 🚀 Phase 6: Future Enhancements
 - [ ] **Pull Request Analysis** - Analyze specific PRs and diffs
 - [ ] **Auto-fix Capabilities** - Apply recommended fixes automatically
-- [ ] **Advanced Analytics** - Historical trends, team metrics, dashboards
-- [ ] **PDF Export** - Professional PDF report generation
 - [ ] **Custom Rules** - User-defined analysis rules
 - [ ] **CI/CD Integration** - GitHub Actions, GitLab CI support
-- [ ] **Webhook Notifications** - Real-time notifications for analysis completion
+- [ ] **Team Collaboration** - Share analyses, comments, and reviews
 
 ## 🎨 Design System
 
@@ -671,6 +737,12 @@ JWT_SECRET=your_jwt_secret_here_change_in_production
 # OpenAI Configuration (Optional - enables LLM-powered false positive reduction)
 OPENAI_API_KEY=sk-your-openai-api-key-here
 OPENAI_MODEL=gpt-4o-mini  # Optional: defaults to gpt-4o-mini (cheaper) or use gpt-4o for better accuracy
+```
+
+**Optional (for webhook notifications):**
+```env
+# Webhook Configuration (Optional - for real-time notifications)
+WEBHOOK_URL=https://your-webhook-endpoint.com/notify
 ```
 
 **Optional (for production with Redis):**
@@ -917,6 +989,8 @@ npm run dev
 - [React Documentation](https://react.dev/)
 - [BullMQ Documentation](https://docs.bullmq.io/)
 - [Redis Documentation](https://redis.io/docs/)
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [PDFKit Documentation](https://pdfkit.org/)
 - [GitHub OAuth Apps](https://docs.github.com/en/apps/oauth-apps)
 
 ## 🤝 Contributing
@@ -929,7 +1003,7 @@ Private - All rights reserved
 
 ---
 
-**Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅ | Phase 4 Complete ✅ | Phase 5 Next 🚧
+**Current Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅ | Phase 4 Complete ✅ | Phase 5 Complete ✅ | Phase 6 Next 🚧
 
 **Last Updated**: December 2024
 

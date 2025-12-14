@@ -299,6 +299,12 @@ export const Repositories = () => {
               </div>
               <div className="flex items-center space-x-4">
                 <button
+                  onClick={() => navigate('/analytics')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transform transition-all duration-300 hover:scale-105"
+                >
+                  Analytics
+                </button>
+                <button
                   onClick={() => navigate('/history')}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transform transition-all duration-300 hover:scale-105"
                 >

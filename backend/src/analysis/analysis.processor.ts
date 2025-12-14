@@ -84,6 +84,9 @@ export class AnalysisProcessor extends WorkerHost {
         completedAt: new Date(),
       });
 
+      // Send webhook notification if configured
+      await this.analysisService.sendWebhookNotification(jobId, 'completed');
+
       return analysisResult;
     } catch (error) {
       // Mark as failed
@@ -92,6 +95,10 @@ export class AnalysisProcessor extends WorkerHost {
         error: error instanceof Error ? error.message : 'Unknown error',
         completedAt: new Date(),
       });
+
+      // Send webhook notification if configured
+      await this.analysisService.sendWebhookNotification(jobId, 'failed');
+
       throw error;
     }
   }

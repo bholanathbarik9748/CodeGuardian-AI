@@ -30,6 +30,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@types/passport-github2": "^1.2.9",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pdfkit": "^0.17.4",
     "bullmq": "^5.66.0",
     "dotenv": "^17.2.3",
     "ioredis": "^5.8.2",
@@ -37,6 +38,7 @@
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-jwt": "^4.0.1",
+    "pdfkit": "^0.17.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
